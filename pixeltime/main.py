@@ -1,6 +1,7 @@
 from astropy.io import fits
 import numpy as np
-
+import pdb
+import matplotlib.pyplot as plt
 
 #defaultPath = ('/data/External/ISIMCV3_unzipped/' +
 #               'NRCNRCA4-DARK-6020143529_1_1_40269_JW1_JLAB88_20160120T143723.248_20160120T145653.554/' +
@@ -10,7 +11,7 @@ import numpy as np
 defaultPath = ('/Users/everettschlawin/Documents/jwst/test_data/cv3/full_frame_wlp8_05A4/' +
                'NRCN821WLP8FULL5-6012184421_1_481_SE_2016-01-12T20h26m57_I025.fits')
 
-class get_refpix_tseries():
+class exposure():
     """ A class to get the reference pixel time series """
     
     def __init__(self,path=defaultPath,inputHDU=None):
@@ -28,7 +29,8 @@ class get_refpix_tseries():
         self.data = self.hdu[0].data
         
         self.nint = self.head['NINT']
-        self.ngroup = self.ngroup['NGROUP']
+        
+        self.ngroup = self.head['NGROUP']
     
     def get_refpix_series(self,ampn=0):
         """ Get a reference pixel series for a given amplifier
@@ -38,7 +40,7 @@ class get_refpix_tseries():
         ampn: int
             The amplifier (0-based counter) to get a time series for
         """
-        if HDU[0].header['SUBARRAY'] == True:
+        if self.head['SUBARRAY'] == True:
             raise NotImplementedError
         else:
             ### length of amplifier in the fast direction
@@ -47,31 +49,40 @@ class get_refpix_tseries():
             self.ampEnds = self.ampStarts + self.ampFastSize - 1
             
             self.nRefPix = (self.nrefRows * self.head['NAXIS1'] * 2
-                            + self.nrefCols * self.head['NAXSI1'] * 2
+                            + self.nrefCols * self.head['NAXIS1'] * 2
                             - self.nrefCols * self.nrefRows * 4)
             
-            for oneInt in self.nint:
+            groupSeries, groupCount, intCount = [], [], []
+            for oneInt in np.arange(self.nint):
                 thisIntStart = oneInt * self.ngroup
-                oneInt = self.data[:,:,thisIntStart:thisIntStart]
-                for oneGroup in self.ngroup:
-                    oneImg = oneInt[:,:,oneGroup]
-                    if ampDirs[ampn] == 1:
-                        datBottom = oneImg[self.ampStarts[ampn]:self.ampEnds[ampn],0:self.nrefRows]
-                        datTop = oneImg[self.ampStarts[ampn]:self.ampEnds[ampn],-self.nrefRows:-1]
+                thisIntEnd = (oneInt + 1) * self.ngroup
+                oneInt = self.data[thisIntStart:thisIntEnd,:,:]
+                
+                for oneGroup in np.arange(self.ngroup):
+                    oneImg = oneInt[oneGroup,:,:]
+                    if self.ampDirs[ampn] == 1:
+                        datBottom = oneImg[0:self.nrefRows,self.ampStarts[ampn]:self.ampEnds[ampn]]
+                        datTop = oneImg[-self.nrefRows:-1,self.ampStarts[ampn]:self.ampEnds[ampn]]
                     else:
-                        datBottom = oneImg[self.ampEnds[ampn]:self.ampStarts[ampn],0:self.nrefRows]
-                        datTop = oneImg[self.ampEnds[ampn]:self.ampStarts[ampn],-self.nrefRows:-1]
+                        datBottom = oneImg[0:self.nrefRows,self.ampEnds[ampn]:self.ampStarts[ampn]]
+                        datTop = oneImg[-self.nrefRows:-1,self.ampEnds[ampn]:self.ampStarts[ampn]]
                     if ampn == 0:
-                        datSides = oneImg[0:self.nrefCols,self.nRefRows:-self.nRefRows]
+                        datSides = oneImg[self.nrefRows:-self.nrefRows,0:self.nrefCols]
                     elif ampn == 1:
-                        datSides = oneImg[-self.nrefCols:-1,self.nRefRows:-self.nRefRows]
+                        datSides = oneImg[self.nrefRows:-self.nrefRows,-self.nrefCols:-1]
                     else:
                         datSides = None
-                    pdb.set_trace()
+                    combSeries = [np.ravel(datBottom),np.ravel(datSides),np.ravel(datTop)]
+                    allRefPix = np.hstack(combSeries)
+                    groupSeries.append(allRefPix)
+                    groupCount.append(oneGroup)
+                intCount.append(oneInt)
+                
+        return intCount, groupCount, groupSeries
         
-        
-
-
-
-
-
+    def plot_refpix(self):
+        """ Plot the reference pixel time series """
+        intC, groupC, groupS = self.get_refpix_series()
+        for oneGroup in groupC:
+            plt.plot(groupS[oneGroup],rasterized=True,label='Grp {}'.format(oneGroup))
+        plt.show()
