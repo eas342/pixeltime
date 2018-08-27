@@ -26,11 +26,21 @@ class exposure():
             self.hdu = inputHDU
         
         self.head = self.hdu[0].header
-        self.data = self.hdu[0].data
+        self.origdata = self.hdu[0].data
+        self.data = self.avgSub(self.origdata)
         
         self.nint = self.head['NINT']
         
         self.ngroup = self.head['NGROUP']
+    
+    def avgSub(self,origData):
+        """ Subtract the average frame from all frames 
+        This will get rid of the average frame
+        permitting more careful study of the reference pixel time series
+        """
+        self.avgImg = np.nanmean(origData,axis=0)
+        return origData - self.avgImg
+        
     
     def get_refpix_series(self,ampn=0):
         """ Get a reference pixel series for a given amplifier
@@ -86,3 +96,4 @@ class exposure():
         for oneGroup in groupC:
             plt.plot(groupS[oneGroup],rasterized=True,label='Grp {}'.format(oneGroup))
         plt.show()
+        
