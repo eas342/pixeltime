@@ -85,7 +85,7 @@ class exposure():
                     if self.ampDirs[ampn] == 1:
                         datBottom = oneImg[0:self.nrefRows,self.ampStarts[ampn]:self.ampEnds[ampn]]
                         datTop = oneImg[-self.nrefRows:-1,self.ampStarts[ampn]:self.ampEnds[ampn]]
-                        timeBottom = 
+                        timeBottom = np.arange(0,self.ampFastSize)
                     else:
                         datBottom = oneImg[0:self.nrefRows,self.ampEnds[ampn]:self.ampStarts[ampn]]
                         datTop = oneImg[-self.nrefRows:-1,self.ampEnds[ampn]:self.ampStarts[ampn]]
