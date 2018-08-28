@@ -11,6 +11,11 @@ import matplotlib.pyplot as plt
 defaultPath = ('/Users/everettschlawin/Documents/jwst/test_data/cv3/full_frame_wlp8_05A4/' +
                'NRCN821WLP8FULL5-6012184421_1_481_SE_2016-01-12T20h26m57_I025.fits')
 
+nDrop = {'RAPID':0,'BRIGHT1':1,'BRIGHT2':0,'SHALLOW2':3,'SHALLOW4':1,
+         'MEDIUM2':8,'MEDIUM8':2,'DEEP2':18,'DEEP8':12}
+
+pixelRate = 1e-5 ## seconds per pixel
+
 class exposure():
     """ A class to get the reference pixel time series """
     
@@ -28,10 +33,12 @@ class exposure():
         self.head = self.hdu[0].header
         self.origdata = self.hdu[0].data
         self.data = self.avgSub(self.origdata)
-        
         self.nint = self.head['NINT']
         
         self.ngroup = self.head['NGROUP']
+        self.nframe = self.head['NFRAME']
+        self.ndrop = nDrop[self.head['READOUT']]
+        
     
     def avgSub(self,origData):
         """ Subtract the average frame from all frames 
@@ -54,6 +61,8 @@ class exposure():
             raise NotImplementedError
         else:
             ### length of amplifier in the fast direction
+            self.tFrame = 10.73677
+            nReset = 1 ## number of reset frames
             self.ampFastSize = self.head['NAXIS1'] / self.nAmps
             self.ampStarts = np.arange(0,self.head['NAXIS1'],self.ampFastSize)
             self.ampEnds = self.ampStarts + self.ampFastSize - 1
@@ -67,12 +76,16 @@ class exposure():
                 thisIntStart = oneInt * self.ngroup
                 thisIntEnd = (oneInt + 1) * self.ngroup
                 oneInt = self.data[thisIntStart:thisIntEnd,:,:]
+                framesBefore = (self.ngroup * self.nframe + (self.ngroup - 1) * self.ndrop + nReset) * oneInt
                 
                 for oneGroup in np.arange(self.ngroup):
                     oneImg = oneInt[oneGroup,:,:]
+                                ## frames coadded             ## frames dropped
+                    frameStart = ((self.nframe * oneGroup) + oneGroup * self.ndrop + framesBefore) * self.tFrame
                     if self.ampDirs[ampn] == 1:
                         datBottom = oneImg[0:self.nrefRows,self.ampStarts[ampn]:self.ampEnds[ampn]]
                         datTop = oneImg[-self.nrefRows:-1,self.ampStarts[ampn]:self.ampEnds[ampn]]
+                        timeBottom = 
                     else:
                         datBottom = oneImg[0:self.nrefRows,self.ampEnds[ampn]:self.ampStarts[ampn]]
                         datTop = oneImg[-self.nrefRows:-1,self.ampEnds[ampn]:self.ampStarts[ampn]]
@@ -97,3 +110,12 @@ class exposure():
             plt.plot(groupS[oneGroup],rasterized=True,label='Grp {}'.format(oneGroup))
         plt.show()
         
+def make_timeImage():
+    """ 
+    Makes a time coordinate image for full frame images
+    """
+    tD = np.zeros(2048,2048)
+    ampSize = 512
+    for oneAmp in np.arange(4):
+        for oneRow in np.arange(2048):
+            tD[oneRow,oneAmp:oneAmp+ampSize] = oneAmp
