@@ -114,8 +114,12 @@ def make_timeImage():
     """ 
     Makes a time coordinate image for full frame images
     """
-    tD = np.zeros(2048,2048)
+    tD = np.zeros([2048,2048])
     ampSize = 512
+    lineOverheads = 12
     for oneAmp in np.arange(4):
         for oneRow in np.arange(2048):
-            tD[oneRow,oneAmp:oneAmp+ampSize] = oneAmp
+            tD[oneRow,oneAmp:oneAmp+ampSize] = oneRow * (lineOverheads + ampSize) + np.arange(ampSize)
+    HDU = fits.PrimaryHDU(tD)
+    HDUList = fits.HDUList(HDU)
+    HDUList.writeto('pixeltime/data/full_array_timing.fits')
