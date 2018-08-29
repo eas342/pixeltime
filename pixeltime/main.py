@@ -117,9 +117,18 @@ def make_timeImage():
     tD = np.zeros([2048,2048])
     ampSize = 512
     lineOverheads = 12
+    directions = [1,-1,1,-1]
     for oneAmp in np.arange(4):
+        
+        startX, endX = ampSize * oneAmp, ampSize * (1 + oneAmp)
+        
         for oneRow in np.arange(2048):
-            tD[oneRow,oneAmp:oneAmp+ampSize] = oneRow * (lineOverheads + ampSize) + np.arange(ampSize)
+            oneAmpRow = oneRow * (lineOverheads + ampSize) + np.arange(ampSize)
+            if directions[oneAmp] == 1:
+                tD[oneRow,startX:endX] = oneAmpRow
+            else:
+                tD[oneRow,startX:endX] = oneAmpRow[::-1]
+    
     HDU = fits.PrimaryHDU(tD)
     HDUList = fits.HDUList(HDU)
-    HDUList.writeto('pixeltime/data/full_array_timing.fits')
+    HDUList.writeto('pixeltime/data/full_array_timing.fits',overwrite=True)
