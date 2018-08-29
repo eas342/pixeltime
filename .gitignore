@@ -1,3 +1,4 @@
 *.pyc
 *.DS_Store
 build/*
+pixeltime/data/full_array_timing.fits

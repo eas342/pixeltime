@@ -16,6 +16,8 @@ nDrop = {'RAPID':0,'BRIGHT1':1,'BRIGHT2':0,'SHALLOW2':3,'SHALLOW4':1,
 
 pixelRate = 1e-5 ## seconds per pixel
 
+timingImg = make_timeImage()
+
 class exposure():
     """ A class to get the reference pixel time series """
     
@@ -71,43 +73,59 @@ class exposure():
                             + self.nrefCols * self.head['NAXIS1'] * 2
                             - self.nrefCols * self.nrefRows * 4)
             
-            groupSeries, groupCount, intCount = [], [], []
-            for oneInt in np.arange(self.nint):
-                thisIntStart = oneInt * self.ngroup
-                thisIntEnd = (oneInt + 1) * self.ngroup
+            groupSeries, groupCount, intCount, timeValues = [], [], [], []
+            for intNumber in np.arange(self.nint):
+                thisIntStart = intNumber * self.ngroup
+                thisIntEnd = (intNumber + 1) * self.ngroup
                 oneInt = self.data[thisIntStart:thisIntEnd,:,:]
-                framesBefore = (self.ngroup * self.nframe + (self.ngroup - 1) * self.ndrop + nReset) * oneInt
+                framesBefore = (self.ngroup * self.nframe + (self.ngroup - 1) * self.ndrop + nReset) * intNumber
                 
                 for oneGroup in np.arange(self.ngroup):
                     oneImg = oneInt[oneGroup,:,:]
                                 ## frames coadded             ## frames dropped
                     frameStart = ((self.nframe * oneGroup) + oneGroup * self.ndrop + framesBefore) * self.tFrame
                     if self.ampDirs[ampn] == 1:
-                        datBottom = oneImg[0:self.nrefRows,self.ampStarts[ampn]:self.ampEnds[ampn]]
-                        datTop = oneImg[-self.nrefRows:-1,self.ampStarts[ampn]:self.ampEnds[ampn]]
-                        timeBottom = np.arange(0,self.ampFastSize)
+                        bYStart, bYEnd, bXStart, bXEnd = 0,self.nrefRows,self.ampStarts[ampn],self.ampEnds[ampn]
+                        tYStart, tYEnd, tXStart, tXEnd = -self.nrefRows,-1,self.ampStarts[ampn],self.ampEnds[ampn]
                     else:
-                        datBottom = oneImg[0:self.nrefRows,self.ampEnds[ampn]:self.ampStarts[ampn]]
-                        datTop = oneImg[-self.nrefRows:-1,self.ampEnds[ampn]:self.ampStarts[ampn]]
+                        bYStart, bYEnd, bXStart, bXEnd = 0,self.nrefRows,self.ampEnds[ampn],self.ampStarts[ampn]
+                        tYStart, tYEnd, tXStart, tXEnd = -self.nrefRows,-1,self.ampEnds[ampn],self.ampStarts[ampn]
+                    
+                    datBottom = oneImg[bYStart:bYEnd,bXStart:bXEnd]
+                    timeBottom = timingImg[bYStart:bYEnd,bXStart:bXEnd]
+                    datTop = oneImg[tYStart:tYEnd,tXStart:tXEnd]
+                    timeTop = timingImg[tYStart:tYEnd,tXStart:tXEnd]
+                    
                     if ampn == 0:
                         datSides = oneImg[self.nrefRows:-self.nrefRows,0:self.nrefCols]
+                        timeSides = timingImg[self.nrefRows:-self.nrefRows,0:self.nrefCols]
                     elif ampn == 1:
                         datSides = oneImg[self.nrefRows:-self.nrefRows,-self.nrefCols:-1]
+                        timeSides = timingImg[self.nrefRows:-self.nrefRows,-self.nrefCols:-1]
                     else:
                         datSides = None
+                        timeSides = None
+                    
                     combSeries = [np.ravel(datBottom),np.ravel(datSides),np.ravel(datTop)]
                     allRefPix = np.hstack(combSeries)
                     groupSeries.append(allRefPix)
+                    
+                    combTime = [np.ravel(timeBottom),np.ravel(timeSides),np.ravel(timeTop)]
+                    #pdb.set_trace()
+                    allTime = np.hstack(combTime) * pixelRate + frameStart
+                    timeValues.append(allTime)
+                    
                     groupCount.append(oneGroup)
-                intCount.append(oneInt)
+                intCount.append(intNumber)
                 
-        return intCount, groupCount, groupSeries
+        return intCount, groupCount, groupSeries, timeValues
         
     def plot_refpix(self):
         """ Plot the reference pixel time series """
-        intC, groupC, groupS = self.get_refpix_series()
+        intC, groupC, groupS, timeVS = self.get_refpix_series()
         for oneGroup in groupC:
-            plt.plot(groupS[oneGroup],rasterized=True,label='Grp {}'.format(oneGroup))
+            plt.plot(timeVS[oneGroup],groupS[oneGroup],
+                     rasterized=True,label='Grp {}'.format(oneGroup))
         plt.show()
         
 def make_timeImage():
@@ -128,7 +146,7 @@ def make_timeImage():
                 tD[oneRow,startX:endX] = oneAmpRow
             else:
                 tD[oneRow,startX:endX] = oneAmpRow[::-1]
-    
-    HDU = fits.PrimaryHDU(tD)
-    HDUList = fits.HDUList(HDU)
-    HDUList.writeto('pixeltime/data/full_array_timing.fits',overwrite=True)
+    return tD
+    # HDU = fits.PrimaryHDU(tD)
+#     HDUList = fits.HDUList(HDU)
+#     HDUList.writeto('pixeltime/data/full_array_timing.fits',overwrite=True)
