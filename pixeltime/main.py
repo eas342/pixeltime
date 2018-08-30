@@ -16,6 +16,27 @@ nDrop = {'RAPID':0,'BRIGHT1':1,'BRIGHT2':0,'SHALLOW2':3,'SHALLOW4':1,
 
 pixelRate = 1e-5 ## seconds per pixel
 
+
+def make_timeImage():
+    """ 
+    Makes a time coordinate image for full frame images
+    """
+    tD = np.zeros([2048,2048])
+    ampSize = 512
+    lineOverheads = 12
+    directions = [1,-1,1,-1]
+    for oneAmp in np.arange(4):
+        
+        startX, endX = ampSize * oneAmp, ampSize * (1 + oneAmp)
+        
+        for oneRow in np.arange(2048):
+            oneAmpRow = oneRow * (lineOverheads + ampSize) + np.arange(ampSize)
+            if directions[oneAmp] == 1:
+                tD[oneRow,startX:endX] = oneAmpRow
+            else:
+                tD[oneRow,startX:endX] = oneAmpRow[::-1]
+    return tD
+
 timingImg = make_timeImage()
 
 class exposure():
@@ -84,34 +105,40 @@ class exposure():
                     oneImg = oneInt[oneGroup,:,:]
                                 ## frames coadded             ## frames dropped
                     frameStart = ((self.nframe * oneGroup) + oneGroup * self.ndrop + framesBefore) * self.tFrame
-                    if self.ampDirs[ampn] == 1:
-                        bYStart, bYEnd, bXStart, bXEnd = 0,self.nrefRows,self.ampStarts[ampn],self.ampEnds[ampn]
-                        tYStart, tYEnd, tXStart, tXEnd = -self.nrefRows,-1,self.ampStarts[ampn],self.ampEnds[ampn]
-                    else:
-                        bYStart, bYEnd, bXStart, bXEnd = 0,self.nrefRows,self.ampEnds[ampn],self.ampStarts[ampn]
-                        tYStart, tYEnd, tXStart, tXEnd = -self.nrefRows,-1,self.ampEnds[ampn],self.ampStarts[ampn]
+                    
+                    bYStart, bYEnd, bXStart, bXEnd = 0,self.nrefRows,self.ampStarts[ampn],self.ampEnds[ampn]
+                    tYStart, tYEnd, tXStart, tXEnd = -self.nrefRows,-1,self.ampStarts[ampn],self.ampEnds[ampn]
                     
                     datBottom = oneImg[bYStart:bYEnd,bXStart:bXEnd]
                     timeBottom = timingImg[bYStart:bYEnd,bXStart:bXEnd]
                     datTop = oneImg[tYStart:tYEnd,tXStart:tXEnd]
                     timeTop = timingImg[tYStart:tYEnd,tXStart:tXEnd]
                     
+                    if self.ampDirs[ampn] == -1:
+                        ## Flip the directions about the vertical for amplifier direction change
+                        datBottom = datBottom[:,::-1]
+                        timeBottom = timeBottom[:,::-1]
+                        datTop = datTop[:,::-1]
+                        timeTop = timeTop[:,::-1]
+                    
                     if ampn == 0:
                         datSides = oneImg[self.nrefRows:-self.nrefRows,0:self.nrefCols]
                         timeSides = timingImg[self.nrefRows:-self.nrefRows,0:self.nrefCols]
-                    elif ampn == 1:
+                    elif ampn == 3:
                         datSides = oneImg[self.nrefRows:-self.nrefRows,-self.nrefCols:-1]
                         timeSides = timingImg[self.nrefRows:-self.nrefRows,-self.nrefCols:-1]
+                        datSides = datSides[:,::-1]
+                        timeSides = timeSides[:,::-1]
                     else:
-                        datSides = None
-                        timeSides = None
+                        datSides = []
+                        timeSides = []
                     
                     combSeries = [np.ravel(datBottom),np.ravel(datSides),np.ravel(datTop)]
                     allRefPix = np.hstack(combSeries)
                     groupSeries.append(allRefPix)
                     
                     combTime = [np.ravel(timeBottom),np.ravel(timeSides),np.ravel(timeTop)]
-                    #pdb.set_trace()
+                    
                     allTime = np.hstack(combTime) * pixelRate + frameStart
                     timeValues.append(allTime)
                     
@@ -120,33 +147,29 @@ class exposure():
                 
         return intCount, groupCount, groupSeries, timeValues
         
-    def plot_refpix(self):
+    def plot_oneAmp(self,ampn=0):
         """ Plot the reference pixel time series """
-        intC, groupC, groupS, timeVS = self.get_refpix_series()
+        intC, groupC, groupS, timeVS = self.get_refpix_series(ampn=ampn)
         for oneGroup in groupC:
             plt.plot(timeVS[oneGroup],groupS[oneGroup],
                      rasterized=True,label='Grp {}'.format(oneGroup))
         plt.show()
-        
-def make_timeImage():
-    """ 
-    Makes a time coordinate image for full frame images
-    """
-    tD = np.zeros([2048,2048])
-    ampSize = 512
-    lineOverheads = 12
-    directions = [1,-1,1,-1]
-    for oneAmp in np.arange(4):
-        
-        startX, endX = ampSize * oneAmp, ampSize * (1 + oneAmp)
-        
-        for oneRow in np.arange(2048):
-            oneAmpRow = oneRow * (lineOverheads + ampSize) + np.arange(ampSize)
-            if directions[oneAmp] == 1:
-                tD[oneRow,startX:endX] = oneAmpRow
-            else:
-                tD[oneRow,startX:endX] = oneAmpRow[::-1]
-    return tD
+    
+    def plot_allAmp(self):
+        fig, ax = plt.subplots()
+        if self.nAmps == 4:
+            ampArray = [0,3,1,2]
+        else:
+            ampArray = np.arange(self.nAmps)
+        for oneAmp in ampArray:
+            intC, groupC, groupS, timeVS = self.get_refpix_series(ampn=oneAmp)
+            ax.plot(np.hstack(timeVS),np.hstack(groupS),
+                    rasterized=True,label='Amp {}'.format(oneAmp+1))
+        ax.legend()
+        ax.set_xlabel('Time (sec)')
+        ax.set_ylabel('Counts - Average (DN)')
+        fig.savefig('allamps.pdf')
+
     # HDU = fits.PrimaryHDU(tD)
 #     HDUList = fits.HDUList(HDU)
 #     HDUList.writeto('pixeltime/data/full_array_timing.fits',overwrite=True)
