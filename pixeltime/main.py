@@ -43,6 +43,7 @@ class exposure():
     """ A class to get the reference pixel time series """
     
     def __init__(self,path=defaultPath,inputHDU=None):
+        self.fits_file_path = path
         self.nrefRows = 4
         self.nrefCols = 4
         self.nAmps = 4
