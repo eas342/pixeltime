@@ -2,6 +2,7 @@ from astropy.io import fits
 import numpy as np
 import pdb
 import matplotlib.pyplot as plt
+import os
 
 #defaultPath = ('/data/External/ISIMCV3_unzipped/' +
 #               'NRCNRCA4-DARK-6020143529_1_1_40269_JW1_JLAB88_20160120T143723.248_20160120T145653.554/' +
@@ -44,6 +45,7 @@ class exposure():
     
     def __init__(self,path=defaultPath,inputHDU=None):
         self.fits_file_path = path
+        self.basename = os.path.splitext(os.path.basename(path))[0]
         self.nrefRows = 4
         self.nrefCols = 4
         self.nAmps = 4
@@ -169,7 +171,7 @@ class exposure():
         ax.legend()
         ax.set_xlabel('Time (sec)')
         ax.set_ylabel('Counts - Average (DN)')
-        fig.savefig('allamps.pdf')
+        fig.savefig('allamps_{}.pdf'.format(self.basename))
 
     # HDU = fits.PrimaryHDU(tD)
 #     HDUList = fits.HDUList(HDU)
