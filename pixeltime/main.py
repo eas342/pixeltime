@@ -40,6 +40,11 @@ def make_timeImage():
 
 timingImg = make_timeImage()
 
+def save_timeImage(overwrite=True):
+    """ Save the timing image"""
+    primHDU = fits.PrimaryHDU(timingImg)
+    primHDU.writeto("timing_image.fits",overwrite=overwrite)
+
 class exposure():
     """ A class to get the reference pixel time series """
     
