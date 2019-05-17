@@ -1,4 +1,5 @@
 from astropy.io import fits
+from astropy.table import Table
 import numpy as np
 import pdb
 import matplotlib.pyplot as plt
@@ -44,6 +45,33 @@ def save_timeImage(overwrite=True):
     """ Save the timing image"""
     primHDU = fits.PrimaryHDU(timingImg)
     primHDU.writeto("timing_image.fits",overwrite=overwrite)
+
+def all_pixels_tser(groupImg):
+    """
+    A simple function that shows all pixels' time series
+    
+    Parameters
+    -----------
+    groupImg: numpy array
+        A 2D image of a single group
+    """
+    nAmps = 4
+    amps = np.arange(nAmps)
+    ampSize = 512
+    fullTable = Table()
+    
+    for oneAmp in amps:
+        xStart = ampSize * oneAmp
+        xEnd = ampSize * (oneAmp + 1)
+        t = Table()
+        t['time'] = timingImg[:,xStart:xEnd].ravel()
+        t['Values'] = groupImg[:,xStart:xEnd].ravel()
+        t.sort('time')
+        fullTable['time'] = t['time']
+        fullTable['Amp {} Val'.format(oneAmp)] = t['Values']
+    
+    return fullTable
+    
 
 class exposure():
     """ A class to get the reference pixel time series """
