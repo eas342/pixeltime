@@ -122,7 +122,7 @@ class exposure():
             ### length of amplifier in the fast direction
             self.tFrame = 10.73677
             nReset = 1 ## number of reset frames
-            self.ampFastSize = self.head['NAXIS1'] / self.nAmps
+            self.ampFastSize = int(self.head['NAXIS1'] / self.nAmps)
             self.ampStarts = np.arange(0,self.head['NAXIS1'],self.ampFastSize)
             self.ampEnds = self.ampStarts + self.ampFastSize - 1
             
