@@ -69,6 +69,7 @@ def all_pixels_tser(groupImg):
         t.sort('time')
         fullTable['time'] = t['time']
         fullTable['Amp {} Val'.format(oneAmp)] = t['Values']
+        t['t (sec)'] = t['time'] * 1e-5
     
     return fullTable
     
