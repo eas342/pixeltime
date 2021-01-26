@@ -19,8 +19,16 @@ import numpy as np
 
 ## here we make up fake data where the flux is the Y or X coordinate
 ## in reality, you could put measured data here
-y, x = np.mgrid[0:2048,0:2048] ## You
-outT = pixeltime.main.all_pixels_tser(oneImg)
+y, x = np.mgrid[0:2048,0:2048]
+outT = pixeltime.main.all_pixels_tser(y)
 
 ```
 `outT` is an astropy table with a time column and the flattend data for each output amplifier
+
+You can plot the time series like so:
+
+```python
+import matplotlib.pyplot as plt
+plt.plot(outT['time'],outT['Amp 0 Val'])
+plt.show()
+```
